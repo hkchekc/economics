@@ -7,7 +7,7 @@ import math
 import matplotlib.pyplot as plt
 
 
-def para_mod_bdis(psi=10, beta=np.arange(0, 1, 0.1, float), theta=0.5):
+def para_mod_bdis(psi=10, beta=np.arange(0, 1, 0.01, float), theta=0.5):
     a = scipy.special.gamma(psi)
     b = scipy.special.gamma(theta * psi)
     c = scipy.special.gamma((1-theta) * psi)
@@ -21,7 +21,13 @@ def para_mod_bdis(psi=10, beta=np.arange(0, 1, 0.1, float), theta=0.5):
     return dis
 
 
-print(para_mod_bdis())
+f = para_mod_bdis(theta=0.5, psi= 2.5)
+g = para_mod_bdis(theta=0.70)
+print("=========================================")
+
+print(f)
+print(f.sum())
+
 
 
 
