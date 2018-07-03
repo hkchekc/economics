@@ -6,7 +6,9 @@ from scipy.special import gamma, factorial
 import math
 import matplotlib.pyplot as plt
 
-
+# MLR satisfied
+# mean satisfied
+# not all in range (0,1)
 
 
 def ndis(theta = 0.5, episilon = 0.1, beta=np.arange(0, 1, 0.1, float)):
@@ -20,8 +22,3 @@ g= ndis(theta=0.5,episilon=0.2)
 
 mlr = g/f
 print(mlr)
-print("=========")
-print(f)
-print("---------------")
-print(g)
-
