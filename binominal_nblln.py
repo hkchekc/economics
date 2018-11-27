@@ -1,4 +1,6 @@
+from __future__ import all_feature_names
 import math
+
 
 def nCr(n,r):
     n = int(n)
@@ -14,5 +16,3 @@ def coin(flip=100, head=50):
     return prob
 
 
-print(coin())
-print()
