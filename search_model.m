@@ -39,10 +39,17 @@ while metric > crit     % Start iteration
     res_wage = wage( find(W-U>0,1,'first') );
     res_nsu = nsu( find(S-NS>0,1,'first') );
     inactRate = (res_nsu - nsu_min)/(nsu_max-nsu_min);
-    P = @(x) (1 - inactRate - lambda/(lambda + alpha* (res_wage - x -2)/2)) ...
-    - (1 - inactRate - lambda/(lambda + alpha* (res_wage - x -2)/2))*(x+ res-wage)/2;
-    disp(fmincon(P, w_max));
-    break
+%     P = @(x) (1 - inactRate - lambda/(lambda + alpha* (res_wage - x -2)/2)) ...
+%     - (1 - inactRate - lambda/(lambda + alpha* (res_wage - x -2)/2))*(x+ res_wage)/2;
+    P = @(max) inactRate/2 - 1/2 - 2*alpha*lambda/((2*lambda+ alpha*(res_wage - max -2))^2) ...
+        + (lambda*(2*lambda+ alpha*(res_wage - max -2))+ max*lambda*alpha) ...
+        /((2*lambda+ alpha*(res_wage - max -2))^2);
+    w_max = fsolve(P, w_max);
+    w_min = w_max -2;
+    wage        = linspace(w_min,w_max,n)';         % Wage grid
+    wage_cdf    = (wage - w_min)/(w_max-w_min); 
+    res_cdf = (res_wage - w_min)/(w_max-w_min);
+    avg_wage = (res_wage + w_max)/2;
 %--------------------------------------------------------------------------
 % New value function: employment
 %--------------------------------------------------------------------------
@@ -64,7 +71,6 @@ while metric > crit     % Start iteration
     W = W_new;      % Update guess of value function: employment
     S = S_new;      % Update guess of VF search
     NS = NS_new;    % Update guess of VF not search
-    P = P_new;
 %--------------------------------------------------------------------------
 end
 %--------------------------------------------------------------------------
