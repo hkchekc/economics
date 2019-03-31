@@ -3,22 +3,22 @@ clear all
 %--------------------------------------------------------------------------
 % Set parameter values
 %--------------------------------------------------------------------------
-beta   = 0.8;   % Germany interst rate 0.0037 pa
-b      = 0.4;   % Unemployment income (not flow utility) (around 60%  of net income for Germany)
-alpha  = 0.5;   % Wage offer probability
-lambda = 0.07;  % Job loss probability (avg tenure of 11.2 years)
+beta   = 0.8;   % Discount Factor
+b      = 0.6;   % Unemployment income (not flow utility) (around 60%  of net income for Germany)
+alpha  = 0.67;  % Wage offer probability
+lambda = 0.011; % Job loss probability 
 w_min  = 0;     % Minimum wage offer
 w_max  = 2;     % Max wage offer
-n_min  = -0.25; % Minimum utility for home production when not spending time on job searching
-n_max  = 0.75;  % Maximum utility for home production when not spending time on job searching
-s_cost = 0.5;   % Cost of searching job
+n_min  = -1.75; % Minimum utility for home production when not spending time on job searching
+n_max  = 1.75;  % Maximum utility for home production when not spending time on job searching
+s_cost = 0.4;   % Cost of searching job
 
 %--------------------------------------------------------------------------
 % Run VFI to compute the reservation wage
 %--------------------------------------------------------------------------
 
-n        = 1e+2;                        % Number of grids for wage offers and also the home production utility
-crit     = 1e-7;                        % Convergence criterion
+n        = 1e+3;                        % Number of grids for wage offers and also the home production utility
+crit     = 1e-12;                       % Convergence criterion
 metric   = 1;                           % Convergence metric
 wage     = linspace(w_min,w_max,n);     % Wage grid
 wage_pdf = 1/n;                         % Probability mass of discreate uniform grids
@@ -34,7 +34,8 @@ NS = ns_range;                                  % Initial guess of value functio
 res_wage = U;                                   % Initial guess of reservation wage for all ns-utility  (n,1 vector)
 res_cdf = (res_wage - w_min)./(w_max - w_min);  % (n,1 vector)
 
-while metric > crit     % Start iteration 
+while metric > crit     % Start iteration
+
     %--------------------------------------------------------------------------
     % Update value functions
     %--------------------------------------------------------------------------
@@ -52,15 +53,15 @@ while metric > crit     % Start iteration
     %--------------------------------------------------------------------------
     % Update Value Functions (details in the description file)
     %--------------------------------------------------------------------------
-    S_new  = alpha.*(1-res_cdf).*exp_W.*wage_pdf./(1-res_cdf)+(alpha.*res_cdf+1-alpha).* U;
+    S_new  = alpha.*(1-res_cdf).*exp_W.*wage_pdf./(1-res_cdf)+(alpha.*res_cdf+1-alpha).* U -s_cost;
     NS_new = ns_range+max(S, NS).*beta;
-    W_new  = ones(n, 1)*wage + beta.*( (1 - lambda).* W + lambda.* U*ones(1, n))-s_cost;
-    U_new  = b+beta.*max(S, NS)-s_cost;
+    W_new  = ones(n, 1)*wage + beta.*((1-lambda).*W+lambda.*U*ones(1, n));
+    U_new  = b+beta.*max(S, NS);
     %--------------------------------------------------------------------------
     % Update reservation wage for all agents
     %--------------------------------------------------------------------------
     for idx = 1:length(W)
-        rw = wage( find(W(idx, :)-U(idx)>0, 1 ,'first') ); % Find the res_wage
+        rw = wage(find(W(idx, :)-U(idx)>0, 1 ,'first') ); % Find the res_wage
         if rw
             res_wage(idx) = rw;
         else
@@ -73,7 +74,6 @@ while metric > crit     % Start iteration
 %--------------------------------------------------------------------------
     metric = max([ reshape(abs(W_new-W)./( 1+abs(W) ), [n*n, 1]); ...
         abs(U_new-U)./( 1+abs(U) ); abs(S_new-S)./( 1+abs(S) ); abs(NS_new-NS)./( 1+abs(NS) )] );
-    disp(metric)
     S_new(isnan(S_new))   = 0;      % Ensure the VFs keep in shape
     NS_new(isnan(NS_new)) = 0;
     U_new(isnan(U_new))   = 0;
@@ -95,11 +95,11 @@ NS = NS_new;
 % Find reseveration utility for no job searching
 % Inactivity Rate related is our Target
 %--------------------------------------------------------------------------
-res_ns = ns_range( find(NS-S > 0, 1, 'first'));  % How much to produce in home production can induce people not to work
-inactRate = 1 - res_ns/n_max;
+res_ns    = ns_range( find(NS-S > 0, 1, 'first'));  % How much to produce in home production can induce people not to work
+inactRate = (n_max - res_ns)/(n_max - n_min);
  % Make sure the script doesn't break when reseveration utility is higher than max home production n_max
 if isempty(res_ns)
-   res_ns = n_max;
+   res_ns    = n_max;
    inactRate = 0;
 end
 %--------------------------------------------------------------------------
@@ -108,14 +108,15 @@ end
 res_mask     = (S > NS);
 avg_res_wage = sum(res_wage(res_mask))/length(res_wage(res_mask));  % Reservation Wage
 uRate        = (lambda-lambda*inactRate)/(lambda+alpha*(1-inactRate)*(1-avg_res_wage/(w_max-w_min))); % Unemployment Rate
-uDuration    = 1/(alpha*(1-avg_res_wage/(w_max-w_min)) );           % Duration of unemployment
 eDuration    = 1/lambda;                                            % Duration of employment
 avg_wage     = (w_max+avg_res_wage)/(w_max-w_min);                  % Average wage
+hpWorkRatio  = (n_max +res_ns)/2/avg_wage;                          % Ratio of average home production value to average wage
+sCostWorkRat = s_cost/avg_wage;                                     % Ratio of searching cost to wage
 %--------------------------------------------------------------------------
 % Display output
 %--------------------------------------------------------------------------
-disp('rHomeProd   rWage       u-rate     u-duration  e-duration   avg_wage inactRate ')
-disp( num2str( [res_ns avg_res_wage    uRate  uDuration   eDuration   avg_wage inactRate], '%12.3f') )
+disp('rHomeProd   rWage       u-rate     e-duration  avg_wage   inactRate   hProd/Work   sCost/Work')
+disp( num2str( [res_ns avg_res_wage    uRate    eDuration   avg_wage inactRate hpWorkRatio sCostWorkRat], '%12.3f') )
 %--------------------------------------------------------------------------
 %--------------------------------------------------------------------------
 % Stimulation
@@ -156,7 +157,7 @@ for t = 1:T
         wage_record(pos) = 0;
     end
     ns_adjust      = (rand(no, 1)-0.500).*2.*0.1;            % Generate random adjustment for no-search utility
-    ns_vec         = 0.05*ori_ns_vec+0.95.*ns_vec+ns_adjust; % Stochastically Update the no searching utility for all agents
+    ns_vec         = 0.0*ori_ns_vec+1.*ns_vec+ns_adjust; % Stochastically Update the no searching utility for all agents
     no_search_mask = (ns_vec > res_ns);                      % Logical mask for no-job-searching agents
     for i = 1: length(no_search_mask)                        % Loop to record the ones who do not search for job
         if no_search_mask(i) == 1 && employed_vec(i) == 0    % Employed agent should not be updated to not searching
